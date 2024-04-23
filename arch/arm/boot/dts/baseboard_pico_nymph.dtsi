@@ -11,56 +11,97 @@
  */
 
 #include "tnmacro.h"
+#include <dt-bindings/sound/fsl-imx-audmux.h>
+
+
 
 / {
 	sound {
-		compatible = "fsl,imx-sgtl5000",
-			     "fsl,imx-audio-sgtl5000";
-		model = "audio-sgtl5000";
-		ssi-controller = <&PICO_AUDA_I2S_CHANNEL>;
-		audio-codec = <&codec>;
-		audio-routing =
-			"MIC_IN", "Mic Jack",
-			"Mic Jack", "Mic Bias",
-			"Headphone Jack", "HP_OUT";
-#if defined(PICO_AUDA_MUX_INT) && defined(PICO_AUDA_MUX_EXT)
-		mux-int-port = <PICO_AUDA_MUX_INT>;
-		mux-ext-port = <PICO_AUDA_MUX_EXT>;
-#else
-		fsl,no-audmux = "true";
-#endif
-	};
+		compatible = "simple-audio-card";
+		simple-audio-card,name = "Sonic77 Audio";
+		simple-audio-card,format = "i2s";
 
-	gpio-leds {
-		compatible = "gpio-leds";
+		simple-audio-card,widgets = 
+			"Speaker", "EXT Speaker";
+        simple-audio-card,routing = 
+			"EXT Speaker", "SPK";
 
-		led {
-			label = "gpio-led";
-			gpios = <&PICO_EXT_GPIO_P44 GPIO_ACTIVE_HIGH>; /* PICO_P44 */
+       		simple-audio-card,bitclock-master = <&dailink_cpu>;
+        	simple-audio-card,frame-master = <&dailink_cpu>;
+	
+		dailink_cpu: simple-audio-card,cpu {
+			sound-dai = <&ssi2 0>;
+            system-clock-frequency=<1411200>;
+            bitclock-master;
+			frame-master;
+		};	
+
+		dailink_master: simple-audio-card,codec {
+			sound-dai = <&codec>;
+			// clocks = <&clks IMX6QDL_CLK_CKO2>;
+			system-clock-frequency  = <24000000>;
+			/* system-clock-frequency = <12000000>; //<705600>;*/
 		};
 	};
 
-	clocks {
-		codec_osc: aud_mclk {
-			compatible = "fixed-clock";
-			#clock-cells = <0>;
-			clock-frequency = <24576000>;
-		};
-	};
+
 };
 
 PICO_NYMPH_GPIO_DEFS();
 
+&ssi3 {
+	status = "disabled";
+};
+
+&ssi1 {
+	status = "disabled";
+};
+
+&audmux {
+	/* SSI2 to PORT 2 of AUDMUX */
+	ssi2 {
+		fsl,audmux-port = <1>;
+		fsl,port-config = <
+			(IMX_AUDMUX_V2_PTCR_SYN |
+            IMX_AUDMUX_V2_PTCR_TFSEL(MX31_AUDMUX_PORT2_SSI1))
+
+			IMX_AUDMUX_V2_PDCR_RXDSEL(MX31_AUDMUX_PORT3_SSI_PINS_3)
+		>;
+	};
+
+	aud3 {
+		fsl,audmux-port = <2>;
+		fsl,port-config = <
+			(IMX_AUDMUX_V2_PTCR_TFSDIR |
+          		IMX_AUDMUX_V2_PTCR_TFSEL(MX31_AUDMUX_PORT2_SSI1) |
+          		IMX_AUDMUX_V2_PTCR_TCLKDIR |
+			    IMX_AUDMUX_V2_PTCR_SYN |
+          		IMX_AUDMUX_V2_PTCR_TCSEL(MX31_AUDMUX_PORT2_SSI1))
+
+          		IMX_AUDMUX_V2_PDCR_RXDSEL(MX31_AUDMUX_PORT2_SSI1)
+        	>;
+	};
+};
+
+&ssi2 {
+	status = "okay";
+	fsl,mode = "i2s_master";
+/*
+	assigned-clocks = <&clks IMX6QDL_CLK_SSI2_SEL>,
+			<&clks IMX6QDL_CLK_PLL4>, 
+			<&clks IMX6QDL_CLK_SSI2>;
+
+	assigned-clocks = <&clks IMX6QDL_CLK_CKO2>,
+			  <&clks IMX6QDL_CLK_PLL4>;
+    	assigned-clock-parents = <&clks IMX6QDL_CLK_PLL4_AUDIO_DIV>;
+    	assigned-clock-rates = <0>, <663552000>, <49152000>;
+*/
+
+	
+};
+
 &PICO_I2CA {
 	status = "okay";
-
-	codec: sgtl5000@a {
-		compatible = "fsl,sgtl5000";
-		reg = <0x0a>;
-		clocks = <&codec_osc>;
-		VDDA-supply = <&reg_2p5v>;
-		VDDIO-supply = <&reg_3p3v>;
-	};
 
 	adc: adc081c@52 {
 		compatible = "ti,adc081c";
@@ -80,6 +121,24 @@ PICO_NYMPH_GPIO_DEFS();
 
 &PICO_I2CC {
 	status = "okay";
+	clock-frequency = <400000>;
+	
+	codec: tlv320aic3120@18 {
+
+		#sound-dai-cells=<0>;
+		compatible = "ti,tlv320aic3120";
+		reg = <0x18>;
+		reset-gpio = <&gpio5 19 GPIO_ACTIVE_LOW>;
+		
+		HPVDD-supply = <&reg_3p3v>;
+		SPRVDD-supply = <&reg_3p3v>;
+		SPLVDD-supply = <&reg_3p3v>;
+		AVDD-supply = <&reg_3p3v>;
+		IOVDD-supply = <&reg_1p8v>;
+		DVDD-supply = <&reg_1p8v>;
+
+	};
+
 };
 
 &PICO_CANA {
