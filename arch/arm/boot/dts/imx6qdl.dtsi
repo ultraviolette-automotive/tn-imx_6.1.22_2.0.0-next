@@ -1173,7 +1173,12 @@
 				assigned-clock-rates = <125000000>;
 				fsl,stop-mode = <&gpr 0x34 27>;
 				fsl,wakeup_irq = <0>;
-				status = "disabled";
+				status = "okay";
+
+				fixed-link {
+					speed = <100>;
+					full-duplex;
+				};
 			};
 
 			mlb: mlb@218c000 {

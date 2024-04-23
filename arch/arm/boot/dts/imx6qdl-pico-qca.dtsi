@@ -625,7 +625,7 @@
 &fec {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_enet>;
-	phy-mode = "rgmii-id";
+	phy-mode = "rgmii";
 	fsl,magic-packet;
 	status = "okay";
 
